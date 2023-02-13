@@ -5,11 +5,20 @@ open Microsoft.Extensions.Primitives
 open Microsoft.Net.Http.Headers
 open System.Text
 open System.Threading.Tasks
+open Thoth
+
+[<CLIMutable>]
+type MessageResponse = {
+    Message: string
+}
+
+let Message = { Message =  "Hello world" }
 
 let myWebApp =
-    // REPLACE WITH YOUR WEB APP IMPLEMENTATION!
-    fun _ _ -> Task.FromResult None
-
+    choose [
+        route "/json"   >=> json Message
+        route "/text"   >=> text "Hello World!"
+    ]
 
 
 
