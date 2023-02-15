@@ -19,26 +19,25 @@ type ErrorResponse = {
 
 let Message = { Message =  "Hello world"}
 
-let fooHandler (lang : string) =
-    sprintf "You have chosen the language %s." lang
-    |> text
+let langHandler : HttpHandler =
+    fun (next : HttpFunc) (ctx : HttpContext) ->
+        let handler =
+            match ctx.TryGetQueryStringValue "lang" with
+            | Some a when a.Length < 1 -> RequestErrors.badRequest (json {Message = "Lang can't be an empty string"})
+            | Some l when l.Length > 2 -> RequestErrors.badRequest (json { Error = $"{l} is {l.Length} length and lang param only accepts ISO 639-1 codes"})
+            | Some "en" -> json { Message = "Hello world"}
+            | Some "de" -> json { Message = "Hallo welt"}
+            | Some "sp" -> json { Message = "Hola mundo"}
+            | Some unknownLanguage ->  
+                let lang = $"{unknownLanguage} is not a supported language at the moment. Currently supported languages are: en (English), es (Spanish), fr (French), de (German)."
+                let msg = { Error = lang }
+                RequestErrors.badRequest (json msg)
+            | None -> RequestErrors.badRequest (json {Message = "Language can't be empty"})
+        handler next ctx
 
 let myWebApp =
     choose [
-        route "/" >=> ( fun next ctx ->
-            let handler =
-                match ctx.TryGetQueryStringValue "lang" with
-                | Some a when a.Length < 1 -> RequestErrors.badRequest (json {Message = "Lang can't be an empty string"})
-                | Some l when l.Length > 2 -> RequestErrors.badRequest (json { Error = $"{l} is {l.Length} length and lang param only accepts ISO 639-1 codes"})
-                | Some "en" -> json { Message = "Hello world"}
-                | Some "de" -> json { Message = "Hallo welt"}
-                | Some "sp" -> json { Message = "Hola mundo"}
-                | Some unknownLanguage ->  
-                    let lang = $"{unknownLanguage} is not a supported language at the moment. Currently supported languages are: en (English), es (Spanish), fr (French), de (German)."
-                    let msg = { Error = lang }
-                    RequestErrors.badRequest (json msg)
-                | None -> RequestErrors.badRequest (json {Message = "Language can't be empty"}) //error
-            handler next ctx )
+        route "/" >=> langHandler
         route "/json"   >=> json Message
         route "/text"   >=> text "Hello World!"
     ]
