@@ -29,7 +29,7 @@ let langHandler =
             match ctx.TryGetQueryStringValue "lang" with
             | Some a when a.Length < 1 -> RequestErrors.badRequest (json {Message = "Lang can't be an empty string"})
             | Some l when l.Length > 2 -> RequestErrors.badRequest (json { Error = $"{l} is {l.Length} length and lang param only accepts ISO 639-1 codes"})
-            | Some "en" -> text $"{ctx.GetEndpoint}" // It is possible to add a type between <>: getSec.GetValue<string>("en:msg")}
+            | Some "en" -> json { Message = getSec.GetValue("en:msg")} // It is possible to add a type between <>: getSec.GetValue<string>("en:msg")}
             | Some "de" -> json { Message = getSec.GetValue<string>("de:msg")}
             | Some "es" -> json { Message = getSec.GetValue<string>("es:msg")}
             | Some unknownLanguage ->  
@@ -42,7 +42,9 @@ let langHandler =
 
 let myWebApp =
     choose [
-        route "/api/greet" >=> langHandler
+        GET >=> choose [
+            route "/api/greet" >=> langHandler
+            ]
         RequestErrors.NOT_FOUND "Not Found" 
     ]
 
