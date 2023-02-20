@@ -16,36 +16,30 @@ type ErrorResponse = {
 
 let Message = { Message =  "Hello world"}
 
-
-let langHandler =
+let uriLangHandler (lang : string): HttpHandler =
     fun (next : HttpFunc) (ctx : HttpContext) ->
         // Read appsettings.json
         let configuration = ctx.GetService<IConfiguration>()
         // get lang section, see .json file
         let getSec = configuration.GetSection("Lang")
-        // match query, prob there's a more neat way to implement this
         let handler =
-            printfn "%A" ctx.GetEndpoint
-            match ctx.TryGetQueryStringValue "lang" with
-            | Some a when a.Length < 1 -> RequestErrors.badRequest (json {Message = "Lang can't be an empty string"})
-            | Some l when l.Length > 2 -> RequestErrors.badRequest (json { Error = $"{l} is {l.Length} length and lang param only accepts ISO 639-1 codes"})
-            | Some "en" -> json { Message = getSec.GetValue("en:msg")} // It is possible to add a type between <>: getSec.GetValue<string>("en:msg")}
-            | Some "de" -> json { Message = getSec.GetValue<string>("de:msg")}
-            | Some "es" -> json { Message = getSec.GetValue<string>("es:msg")}
-            | Some unknownLanguage ->  
-                let lang = $"{unknownLanguage} is not a supported language at the moment. Currently supported languages are: en (English), es (Spanish), fr (French), de (German)."
+            match lang with
+            | "en" -> json { Message = getSec.GetValue("en:msg")} // It is possible to add a type between <>: getSec.GetValue<string>("en:msg")}
+            | "de"-> json { Message = getSec.GetValue<string>("de:msg")}
+            | "es" -> json { Message = getSec.GetValue<string>("es:msg")}
+            | x when x.Length > 2 || x.Length < 2 -> RequestErrors.badRequest (json {Message = "Language must be a ISO 639-1 value"})
+            | xx ->
+                let lang = $"{xx} is not a supported language at the moment. Currently supported languages are: en (English), es (Spanish), fr (French), de (German)."
                 let msg = { Error = lang }
                 RequestErrors.badRequest (json msg)
-            | None -> RequestErrors.badRequest (json {Message = "Language can't be empty"})        
         handler next ctx
-
 
 let myWebApp =
     choose [
-        GET >=> choose [
-            route "/api/greet" >=> langHandler
-            ]
-        RequestErrors.NOT_FOUND "Not Found" 
+        routef "/api/greet/%s" uriLangHandler
+
+        // If none of the routes matched then return a 404
+        RequestErrors.NOT_FOUND "Not Found"
     ]
 
 
